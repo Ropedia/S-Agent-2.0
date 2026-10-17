@@ -61,8 +61,12 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.
 .wordmark img{height:clamp(56px,8vw,92px);width:auto}
 .wordmark .ver{font:800 clamp(44px,6.4vw,74px)/.86 var(--display);color:var(--accent);letter-spacing:-.03em}
 .hero h1{font-size:clamp(30px,4.1vw,50px);line-height:1.08;font-weight:700}
-.hero .lede{font-size:17.5px;line-height:1.65;color:var(--ink2);margin:20px 0 0;max-width:36em}
-.hero .lede b{color:var(--ink);font-weight:600}
+.authors{margin-top:22px}
+.author-list{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0;color:var(--ink);font-size:16px;font-weight:500;line-height:1.6}
+.author-list > span{white-space:nowrap}
+.authors sup{font-size:.7em;line-height:0;vertical-align:super}
+.affiliations{display:flex;flex-direction:column;gap:3px;margin:14px 0 0;color:var(--ink2);font-size:13px;line-height:1.5}
+.ropedia-mark{color:var(--accent)}
 .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
 .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:999px;border:1px solid var(--line2);background:var(--panel);color:var(--ink);font:600 13px var(--text);letter-spacing:.02em;text-decoration:none;transition:border-color .15s,background .15s}
 .btn:hover{border-color:var(--accent);text-decoration:none}
