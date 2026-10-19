@@ -1,0 +1,21 @@
+# SAgent job config for the ERQA spatial reasoning dataset.
+#
+# The perception gateway must be reachable from task containers before running
+# (curl -s http://127.0.0.1:8090/health on the host). Tasks still run without
+# it -- perception is optional -- but scores will reflect pixels-only solving.
+jobs_dir: jobs
+n_attempts: 1
+timeout_multiplier: 1.0
+orchestrator:
+  type: local
+  n_concurrent_trials: 4
+  quiet: false
+environment:
+  type: docker
+  force_build: false
+  delete: true
+agents:
+  - name: mini-swe-agent
+    model_name: openai/qwen3.6-35b-a3b
+datasets:
+  - path: datasets/erqa_spatial

@@ -1,0 +1,120 @@
+model_list:
+  # Public model name used by clients. Keep this entry as a fallback for
+  # requests without a sticky routing key.
+  - model_name: "GLM-5.1-FP8"
+    litellm_params:
+      model: "openai/GLM-5.1-FP8"
+      api_base: "https://your-openai-compatible-endpoint.example.com/v1"
+      api_key: "your-upstream-api-key"
+      input_cost_per_token: 0.0000021
+      output_cost_per_token: 0.0000084
+
+  # Backend-specific aliases used by trajectory_logger.py sticky routing.
+  # serve_litellm.sh injects a default LITELLM_STICKY_ROUTING_ALIASES value for
+  # GLM-5.1-FP8 when CONFIG_NAME=litellm_config. Keep the aliases below in sync
+  # with that default, or override LITELLM_STICKY_ROUTING_ALIASES from the shell.
+  #
+  # Each alias should point at a distinct upstream deployment when possible.
+  - model_name: "GLM-5.1-FP8@llm"
+    litellm_params:
+      model: "openai/GLM-5.1-FP8"
+      api_base: "https://your-openai-compatible-endpoint-llm.example.com/v1"
+      api_key: "your-upstream-api-key"
+      input_cost_per_token: 0.0000021
+      output_cost_per_token: 0.0000084
+
+  - model_name: "GLM-5.1-FP8@llm2"
+    litellm_params:
+      model: "openai/GLM-5.1-FP8"
+      api_base: "https://your-openai-compatible-endpoint-llm2.example.com/v1"
+      api_key: "your-upstream-api-key"
+      input_cost_per_token: 0.0000021
+      output_cost_per_token: 0.0000084
+
+  - model_name: "GLM-5.1-FP8@llm3"
+    litellm_params:
+      model: "openai/GLM-5.1-FP8"
+      api_base: "https://your-openai-compatible-endpoint-llm3.example.com/v1"
+      api_key: "your-upstream-api-key"
+      input_cost_per_token: 0.0000021
+      output_cost_per_token: 0.0000084
+
+  - model_name: "GLM-5.1-FP8@llm30"
+    litellm_params:
+      model: "openai/GLM-5.1-FP8"
+      api_base: "https://your-openai-compatible-endpoint-llm30.example.com/v1"
+      api_key: "your-upstream-api-key"
+      input_cost_per_token: 0.0000021
+      output_cost_per_token: 0.0000084
+
+  - model_name: "GLM-5.1-FP8@llm31"
+    litellm_params:
+      model: "openai/GLM-5.1-FP8"
+      api_base: "https://your-openai-compatible-endpoint-llm31.example.com/v1"
+      api_key: "your-upstream-api-key"
+      input_cost_per_token: 0.0000021
+      output_cost_per_token: 0.0000084
+
+  - model_name: "GLM-5.1-FP8@llm32"
+    litellm_params:
+      model: "openai/GLM-5.1-FP8"
+      api_base: "https://your-openai-compatible-endpoint-llm32.example.com/v1"
+      api_key: "your-upstream-api-key"
+      input_cost_per_token: 0.0000021
+      output_cost_per_token: 0.0000084
+
+  - model_name: "GLM-5.1-FP8@llm33"
+    litellm_params:
+      model: "openai/GLM-5.1-FP8"
+      api_base: "https://your-openai-compatible-endpoint-llm33.example.com/v1"
+      api_key: "your-upstream-api-key"
+      input_cost_per_token: 0.0000021
+      output_cost_per_token: 0.0000084
+
+  - model_name: "GLM-5.1-FP8@llm34"
+    litellm_params:
+      model: "openai/GLM-5.1-FP8"
+      api_base: "https://your-openai-compatible-endpoint-llm34.example.com/v1"
+      api_key: "your-upstream-api-key"
+      input_cost_per_token: 0.0000021
+      output_cost_per_token: 0.0000084
+
+  - model_name: "GLM-5.1-FP8@llm35"
+    litellm_params:
+      model: "openai/GLM-5.1-FP8"
+      api_base: "https://your-openai-compatible-endpoint-llm35.example.com/v1"
+      api_key: "your-upstream-api-key"
+      input_cost_per_token: 0.0000021
+      output_cost_per_token: 0.0000084
+
+  - model_name: "GLM-5.1-FP8@llm36"
+    litellm_params:
+      model: "openai/GLM-5.1-FP8"
+      api_base: "https://your-openai-compatible-endpoint-llm36.example.com/v1"
+      api_key: "your-upstream-api-key"
+      input_cost_per_token: 0.0000021
+      output_cost_per_token: 0.0000084
+
+  - model_name: "GLM-5.1-FP8@llm37"
+    litellm_params:
+      model: "openai/GLM-5.1-FP8"
+      api_base: "https://your-openai-compatible-endpoint-llm37.example.com/v1"
+      api_key: "your-upstream-api-key"
+      input_cost_per_token: 0.0000021
+      output_cost_per_token: 0.0000084
+
+router_settings:
+  optional_pre_call_checks:
+    # - prompt_caching
+    - responses_api_deployment_check
+    # Enable only when LiteLLM has a configured DB connection.
+    # - session_affinity
+
+general_settings:
+  master_key: "dummy-key-cf"
+  disable_spend_logs: true
+
+litellm_settings:
+  drop_params: true
+  callbacks: "trajectory_logger.trajectory_logger"
+  use_chat_completions_url_for_anthropic_messages: true

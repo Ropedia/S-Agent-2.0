@@ -1,0 +1,3 @@
+[submodule "perception/SpatialClaw"]
+	path = perception/SpatialClaw
+	url = https://github.com/NVlabs/SpatialClaw.git

@@ -1,0 +1,52 @@
+#
+#
+#
+#
+#     `Function call is missing a thought_signature in functionCall parts.
+#      This is required for tools to work correctly`
+#
+# （`factory.py:_get_dummy_thought_signature()` = base64("skip_thought_signature_validator")，
+#
+#
+#   call_926584__thought__AY89a19LeKX7YtAWrs...
+#
+#      gemini-3.8-flash / 3.7-flash / 3.6-flash / 3.5-flash /
+#      gemini-3.5-flash-lite / gemini-3-flash-preview / gemini-2.5-flash
+#
+
+model_list:
+  #
+  - model_name: "gemini-3.8-flash-vertex"
+    litellm_params:
+      model: "gemini/gemini-3.8-flash"
+      api_base: os.environ/VERTEX_EXPRESS_BASE
+      api_key: os.environ/VERTEX_API_KEY
+      temperature: 1.0
+    model_info:
+      supports_vision: true
+      max_input_tokens: 262144
+      max_output_tokens: 65536
+
+  - model_name: "gemini-3.5-flash-vertex"
+    litellm_params:
+      model: "gemini/gemini-3.5-flash"
+      api_base: os.environ/VERTEX_EXPRESS_BASE
+      api_key: os.environ/VERTEX_API_KEY
+      temperature: 1.0
+    model_info:
+      supports_vision: true
+      max_input_tokens: 262144
+      max_output_tokens: 65536
+
+general_settings:
+  master_key: "dummy-key-cf"
+  disable_spend_logs: true
+
+litellm_settings:
+  drop_params: true
+  callbacks: "trajectory_logger.trajectory_logger"
+  #
+  post_call_rules: repetition_rule.repetition_rule
+
+router_settings:
+  num_retries: 2

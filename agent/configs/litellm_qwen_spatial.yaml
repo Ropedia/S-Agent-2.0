@@ -1,0 +1,309 @@
+# Fronts the local vLLM so openhands-sdk can discover the model's real
+# capabilities. The SDK only queries /v1/model/info when the model name starts
+# with `litellm_proxy/` (openhands/sdk/llm/utils/model_info.py:76), and that
+# query is the ONLY thing that flips LLM.vision_is_active() to True for a
+# self-hosted model -- litellm.supports_vision() returns False for every
+# spelling of qwen3.6-35b-a3b. With the gate closed, ImageContent is dropped
+# from the payload silently (openhands/sdk/llm/message.py:375).
+model_list:
+  - model_name: "qwen3.6-35b-a3b"
+    litellm_params:
+      model: "hosted_vllm/qwen3.6-35b-a3b"
+      api_base: "http://127.0.0.1:8077/v1"
+      api_key: "bearer"
+      # vLLM's built-in decode-loop detector. Stops generation as soon as the
+      # tail of output_token_ids is a verbatim period-p repeat, instead of
+      # letting it run to max_tokens.
+      #
+      # WHY THIS AND NOT A SAMPLING PENALTY. repetition_penalty /
+      # frequency_penalty / no_repeat_ngram_size all reshape the logits at
+      # EVERY step, so they change the model's distribution on healthy
+      # generations too and break comparability with v1-v10. This one lives in
+      # the scheduler's stop-check (vllm/v1/core/sched/utils.py
+      # check_sequence_repetition) and does a pure integer comparison on
+      # already-sampled token ids -- it never touches logits. Until it fires,
+      # generation is bit-identical to running without it. Verified by reading
+      # the installed source at
+      # /scratch/ywxzml3j/wry/miniconda3/envs/vllm/.../vllm/v1/core/sched/utils.py:121-127.
+      #
+      # WHY NOT A LITELLM POST-CALL HOOK. That was the first design. It can
+      # only judge after the whole 131072-token response exists (~1763 s), so
+      # it converts "one wasted generation" into "one wasted generation plus a
+      # retry". The detector stops at roughly 3x the pattern length instead.
+      #
+      # THRESHOLDS: measured by running vLLM's OWN detector function over our
+      # v9 responses (n=1532: 43 capped, 1489 healthy), not copied from a
+      # default and not argued from the line-repetition statistic.
+      #
+      # ⚠️ NOT REPRODUCIBLE IN-REPO: the sweep script was never committed, so
+      # the table below cannot be re-derived from this repository. It is a
+      # record of a measurement, not a checkable claim. If this flag is ever
+      # revived, redo the sweep and commit the script -- and re-measure against
+      # HEALTHY responses too, because v11 showed real firing (85) ran ~3x the
+      # rate this table predicted (~30).
+      #
+      #   max_pattern_size   recall on capped   false positives on healthy
+      #         64                 7%                 0.13%
+      #        256                28%                 0.20%
+      #        512                44%                 0.27%
+      #       1024                60%                 0.40%
+      #       2048                70%                 0.40%   <- chosen
+      #       4096                72%                 0.40%
+      #       8192                72%                 0.40%
+      #
+      # Two things the sweep suggested. False positives APPEAR to stop growing
+      # at 1024 (a flat 6 of 1489 all the way to 8192). ⚠️ That "flat" is not
+      # established: 6/1489 has a Wilson CI of [0.19%, 0.88%], wide enough to
+      # cover both "flat" and "still growing", so the claim that the usual
+      # precision/recall tradeoff is absent here was overstated. Recall does
+      # saturate at 2048: +10pp from 1024, then +2pp, then nothing. 2048 takes
+      # 97% of the reachable recall while keeping the window half of 4096,
+      # which is the more conservative choice on data we have not seen yet.
+      # Cost is 0.05 ms per response.
+      #
+      # The first configuration I wrote used 64 (the value the upstream PR
+      # suggests) reasoning from "our loops repeat the same LINE 80-3435
+      # times". That reasoning was wrong: a repeated *line* is not a repeated
+      # *token pattern of length <= 64*. Running the real function over the
+      # real data caught it -- 64 fires on 3 of 43. Our loops re-run a whole
+      # paragraph of reasoning, so the period is hundreds of tokens.
+      #
+      # A false positive truncates one healthy response early, which the agent
+      # recovers from on the next turn; a false negative costs a full
+      # 131072-token generation (~1763 s). The costs are that asymmetric, which
+      # is why the window is sized for recall.
+      #
+      # LIMITS, both measured:
+      #  * 28% of our capped responses still slip through, and no window size
+      #    reaches them (72% is the ceiling at 4096 and at 8192 alike) -- they are
+      #    "deliberation churn", the same argument re-WORDED each pass, which
+      #    is near-identical rather than identical, so no verbatim-pattern
+      #    detector can see it. That residual needs a different mechanism.
+      #  * the numbers above use a word-level proxy for tokens (no tokenizer
+      #    available offline). Token-level periods are ~1.3x longer, so real
+      #    recall at 1024 may be slightly lower than 60%.
+      #
+      # OBSERVABILITY: vLLM sets stop_reason="repetition_detected", but litellm
+      # rewrites finish_reason to "stop" -- so count stop_reason, never
+      # finish_reason, when checking how often this fires.
+      # ⚠️ DISABLED 2026-08-21 after v11. Everything below about the detector's
+      # mechanism and thresholds is still accurate; what was wrong is the
+      # assumption that firing it is SAFE. It is not, on this stack:
+      #
+      #   vLLM stops early, sets finish_reason="repetition"
+      #     -> litellm does not know that value and rewrites it to "stop"
+      #        (litellm_core_utils/core_helpers.py:109 map_finish_reason,
+      #         85 such warnings in one v11 run)
+      #     -> openhands-sdk decides an episode is finished by whether the
+      #        response carries tool_calls, and a truncated one carries none,
+      #        so it reads the truncation as "the agent is done" and ENDS THE
+      #        EPISODE mid-sentence.
+      #
+      # v11 measured: accuracy 51% -> 9%, unanswered 2% -> 74%, median turns
+      # 16 -> 8, and 74/100 episodes never issued a single answer.txt write.
+      # That is worse than v10's 16k-cap disaster. Three independent checks
+      # tie it to this flag: 85 litellm rewrites vs 86 terminal stops; terminal
+      # responses median 572 completion_tokens (nowhere near any cap, so not
+      # truncation-by-length); and vLLM's own periodicity test finds NO repeat
+      # in the tail of any of those 86 -- the cut lands past the loop.
+      #
+      # Also note the offline sweep UNDER-predicted firing by ~3x (predicted
+      # ~30, observed 85): it used a word-level proxy and only scanned capped
+      # responses, so short repeats inside healthy ones were never counted.
+      #
+      # Do not re-enable until the early stop is distinguishable downstream --
+      # e.g. litellm maps it to an error the SDK retries, or the SDK stops
+      # treating a no-tool-call response as a completed episode. Re-enabling
+      # this alone will reproduce v11 exactly.
+      #
+      # extra_body:
+      #   repetition_detection:
+      #     min_pattern_size: 4
+      #     max_pattern_size: 2048
+      #     min_count: 3
+      #
+      # ── SAMPLING: the official "thinking / general" profile ───────────────
+      #
+      # We were running the WRONG PROFILE. The model card gives three, and ours
+      # is a multi-turn agent doing spatial-reasoning QA, not precise coding:
+      #
+      #   thinking / general tasks   temp 1.0  top_p 0.95  top_k 20
+      #                              presence_penalty 1.5  repetition_penalty 1.0
+      #   thinking / precise coding  temp 0.6  top_p 0.95  top_k 20
+      #                              presence_penalty 0.0   <- what we had
+      #   instruct / non-thinking    temp 0.7  top_p 0.80  top_k 20
+      #
+      # Qwen's own SWE-Bench and Terminal-Bench evaluations use temp=1.0,
+      # top_p=0.95 (model card, Evaluation notes) -- i.e. the general profile is
+      # what upstream itself uses for agentic benchmarks.
+      #
+      # `presence_penalty: 1.5` is the one that matters most here. The card
+      # recommends it for thinking mode, and its stated job is to stop the model
+      # re-walking the same reasoning -- which is exactly the degenerate
+      # repetition this project spent a night fighting with a zlib detector
+      # downstream. The upstream fix for it was a sampling parameter all along.
+      #
+      # ⚠️ THIS CHANGES THE SAMPLING DISTRIBUTION, so comparability with v1-v19
+      # ENDS HERE. Any run after this is a new baseline; do not put its numbers
+      # in a table with earlier ones.
+      #
+      # ⚠️ top_k / min_p / repetition_penalty are not OpenAI-API fields, so they
+      # travel in extra_body; presence_penalty and top_p are standard.
+      # `drop_params: true` below would silently discard unsupported keys, which
+      # is why the extra_body ones are grouped separately rather than hoped for.
+      # SWEPT, one variable per configuration, then chosen. On 53 questions all five configurations
+      # completed, paired against the v19 baseline:
+      #
+      #   v19 baseline  temp 0.6  pp 0    top_p 1.0        50.9%     --
+      #   configuration A  only   temp 1.0                           58.5%   net +4  p=0.29
+      #   configuration C  only   top_p 0.95 + top_k 20              56.6%   net +3  p=0.45
+      #   configuration B  only   presence_penalty 1.5               49.1%   net -1  p=1.00
+      #   v20    all three at once                         50.9%   net +0  p=1.00
+      #
+      # temp and top_p each point UP, presence_penalty points DOWN, and all
+      # three together cancel to zero -- which is the whole mechanism behind
+      # v20 "looking like a 3.4pp drop". That apparent drop was a subset
+      # artefact: on the matched 53 questions v20 equals the baseline exactly.
+      #
+      # ⚠️ NONE of the four p-values is significant. What is established is the
+      # negative: the drop was not caused by any single parameter. The upward
+      # direction of temp/top_p is suggestive only (4 and 3 flipped questions).
+      # Do not cite "temp 1.0 gains 7.6pp".
+      #
+      # Chosen: temp 1.0 + top_p 0.95 + top_k 20, WITHOUT presence_penalty.
+      # Not a mix I invented -- the model card's own SWE-Bench and
+      # Terminal-Bench evaluation notes specify exactly `temp=1.0, top_p=0.95`
+      # and do not mention presence_penalty. That parameter appears only in the
+      # "general tasks" line, and we already stop degenerate repetition
+      # downstream with the zlib post-call hook.
+      #
+      # Still env-readable so the next sweep stays one-variable.
+      temperature: os.environ/SAMPLE_TEMPERATURE
+      top_p: os.environ/SAMPLE_TOP_P
+      presence_penalty: os.environ/SAMPLE_PRESENCE_PENALTY
+      extra_body:
+        top_k: os.environ/SAMPLE_TOP_K
+        min_p: 0.0
+        repetition_penalty: 1.0
+      #     min_count: 3
+    model_info:
+      # Measured true: prompt_tokens 13 -> 103 when an image is attached.
+      supports_vision: true
+      # Budget split across vLLM's 262144 max-model-len.
+      #
+      # 2026-08-20 REBALANCED. The old split was input 253952 / output 8192,
+      # written as "reserve 8192 for output" -- a guess, never checked against
+      # what the agent actually uses. Measured over the m0a run (1228 calls):
+      #
+      #   prompt_tokens      median 12589   p95 23066   max 33885
+      #   completion_tokens  median   164   p95  8192   max  8192   <- pinned
+      #   calls hitting 8192: 74 / 1228
+      #
+      # So input was over-reserved by ~7x (253952 allocated, 33885 ever used)
+      # while output was starved: 36 responses ended with finish_reason
+      # "length", and **43 of 100 episodes never wrote /app/answer.txt** because
+      # the agent was cut off mid-sentence before it got to the write step.
+      # 65% of those had already stated the correct answer in prose. Those
+      # episodes score 0 -- indistinguishable from a wrong answer in the reward,
+      # which is how this went unnoticed (docs/PITFALLS.md 4.1d, same failure
+      # class we had just hit on the SpatialClaw side and still repeated here).
+      #
+      # 32768 output is 4x the old cap and ~2x the largest legitimate response
+      # we can observe; input 229376 is still 6.7x the measured max prompt, and
+      # prompt grows with loop history so the headroom is deliberate.
+      # Not larger: configuration A showed a degenerate self-doubt loop can run to
+      # 131072 tokens in ONE response, and with max_iterations=80 an unbounded
+      # ceiling turns one stuck episode into hours of GPU time.
+      #
+      # ^^^ SUPERSEDED, kept as the record of a repeated mistake. 32768 was
+      # another invented number -- exactly what PITFALLS 4.1e says not to do
+      # ("go find the upstream authoritative value, don't guess a second one"),
+      # written hours earlier about this same failure on the SpatialClaw side.
+      #
+      # The authoritative reference is SpatialClaw's own config for this
+      # backbone (repro/spatial_agent/config/model/qwen3.6-35b-a3b.json):
+      #   main / planning / general : max_tokens 131072
+      #   vlm                       : 32768
+      #   vlm_grounding             : 16384
+      # served at max_model_len 262144 (launch_managers/vllm_manager/models.json).
+      #
+      # Our sagent agent is the "main" reasoning role, so it gets 131072, and
+      # input takes the remaining 131072 -- still 3.9x the measured max prompt
+      # (33885). The runaway concern above is real but is NOT solved by a small
+      # ceiling: it only converts "one expensive episode" into "one silently
+      # truncated episode scored 0", which is the bug we are fixing. Bound
+      # runaway with max_iterations and the finish-gate instead.
+      #     if max_output_tokens >= context_window:  capped = max_output_tokens // 2
+      #
+      #
+      # ── 2026-08-21：max_output_tokens 131072 → 16384 ──────────────────────
+      #
+      #
+      #
+      #
+      max_input_tokens: 262144
+      # 2026-08-21 (later same day): 16384 -> back to 131072.
+      #
+      # The 16384 experiment ran as v10 and FAILED, hard: unanswered went 2% ->
+      # 57%, accuracy 51% -> 27% (worse than the v1 baseline). The cap worked
+      # exactly as designed -- generation time at the cap fell from 2141 s to
+      # 114 s -- but it cut the wrong thing.
+      #
+      # What the measurement missed: I sized 16384 from the token-length
+      # distribution under 131072 and concluded "only 1.33% of healthy
+      # responses get truncated, and truncation != a lost answer because the
+      # agent continues next turn". The truncation RATE was right (2.8% ->
+      # 3.6%). The POSITION was not:
+      #     v9  (131072): 43 truncations -> 27 on the last turn, 16 mid-episode
+      #                   and the agent carried on afterwards
+      #     v10 (16384) : 43 truncations -> 43 on the last turn, 0 recoveries
+      # At 131072 the thing being cut was a decode loop the agent had already
+      # finished working around. At 16384 it was ordinary long reasoning at
+      # turn 4-19 (one episode was mid-way through a pixel->world coordinate
+      # conversion), so the episode simply ended with nothing submitted.
+      #
+      # The lesson is about the measurement, not the number: a distribution
+      # measured UNDER one cap does not predict behaviour under a different
+      # cap, because the cap changes what the agent does. The repetition
+      # detector above targets the loop directly, so the cap does not have to.
+      max_output_tokens: 131072
+
+general_settings:
+  master_key: "dummy-key-cf"
+  disable_spend_logs: true
+
+litellm_settings:
+  drop_params: true
+  callbacks: "trajectory_logger.trajectory_logger"
+  # Reject a degenerate decode loop so the Router regenerates it, instead of
+  # letting a loop (or a truncation of one) reach the agent. Implementation and
+  # the full rationale are in configs/repetition_rule.py; the short version is
+  # that this is the only extension point in this stack that can cause a RETRY
+  # rather than merely observe, which is precisely what the vLLM detector above
+  # could not do.
+  #
+  # Thresholds live in scripts/repetition_detector_sweep.py and are enforced by
+  # importing them, so the offline validation and the live rule cannot drift.
+  # Validated before enabling:
+  #   Stage 1 (offline, 5818 archived responses): catches 158/256 large
+  #           responses, 0 false positives on 5562 healthy ones, 1.6x margin.
+  #   Stage 2 (real proxy + mock upstream): degenerate -> client gets 200 with
+  #           the HEALTHY body, x-litellm-attempted-retries: 1; healthy ->
+  #           exactly ONE upstream generation.
+  #           Rerun with: bash scripts/stage2_repetition_proxy_check.sh
+  #
+  # ⚠️ Only ONE post-call rule is ever loaded -- proxy_server.py:4079 assigns
+  # a single-element list rather than appending. Put new logic inside the
+  # existing function, do not add a second entry here.
+  post_call_rules: repetition_rule.repetition_rule
+
+router_settings:
+  # Retries for the rule above. Set explicitly because the default is 2, not
+  # the 3 the docs claim (router.py:551-556 falls back to
+  # openai.DEFAULT_MAX_RETRIES == 2).
+  #
+  # These compose with the SDK's own 5 retries on InternalServerError
+  # (openhands/sdk/llm/llm.py:130-138, 311), so an exhausted rule produces
+  # another retry rather than a dead episode -- the inverse of v11, where the
+  # terminal state was "episode silently declared complete".
+  num_retries: 2

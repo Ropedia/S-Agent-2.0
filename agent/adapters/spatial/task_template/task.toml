@@ -1,0 +1,52 @@
+version = "1.0"
+
+[metadata]
+author_name = "Google DeepMind (ERQA benchmark); adapter by SpatialClaw"
+difficulty = "{difficulty}"
+category = "spatial-reasoning"
+tags = ["erqa", "spatial-reasoning", "multimodal", "embodied", "{question_type_tag}", "{image_count_tag}"]
+source = "ERQA (Embodied Reasoning Question Answer)"
+question_id = "{question_id}"
+question_type = "{question_type}"
+num_images = {num_images}
+visual_indices = "{visual_indices}"
+
+[verifier]
+timeout_sec = 120.0
+# Same uid as the agent, so the verifier reads the answer.txt the agent wrote
+# (mode 0644) and writes reward.txt into the same-owned /logs/verifier mount.
+# Substituted by the adapter from this host's `id -u`, matching the image's
+# APP_UID (see environment/Dockerfile).
+user = {app_uid}
+
+[agent]
+#
+timeout_sec = 7200.0
+# Run the agent as the host uid rather than root. The gateway runs on the host
+# as that uid and shares one per-trial /perception directory with this
+# container; when the agent ran as root, everything it copied in was root-owned
+# and the gateway could not create artifacts/ there -- 400 on every perception
+# call (Bug A). The image builds this uid as a real user and owns /app to it;
+# PID 1 stays root so the entrypoint can chown the bind mount. SAgent applies
+# this via `docker exec -u` (environment.default_user).
+user = {app_uid}
+# network_mode = "public" (SAgent's default when unset).
+#
+# Deliberately NOT "allowlist". The perception gateway is reached through a
+# host-gateway alias / default-route IP that is assigned per Docker network at
+# container start, so it cannot be written as a static allowlist entry:
+# normalize_allowed_hosts() rejects ports, URLs and CIDRs, "host.docker.internal"
+# does not resolve on the host doing the resolution, and the numeric bridge
+# gateway is not stable across daemons. SAgent's Docker allowlist also shells
+# out to iptables *inside the task image*, which this deliberately slim CPU-only
+# image does not ship. See README.md "Network policy".
+
+[environment]
+build_timeout_sec = 600.0
+cpus = 2
+memory_mb = 4096
+# No [environment.healthcheck] on purpose. A healthcheck failure aborts the
+# trial, but perception is an *optional* aid here -- a scaffold that reads the
+# PNGs directly is a valid solver. Gating every task on gateway reachability
+# would turn a degraded perception service into 400 harness errors instead of
+# 400 scorable attempts. See README.md "Why no healthcheck".

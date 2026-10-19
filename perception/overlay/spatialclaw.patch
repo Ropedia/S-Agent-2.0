@@ -1,0 +1,86 @@
+diff --git a/spatial_agent/entrypoints/launch_gpu_server.py b/spatial_agent/entrypoints/launch_gpu_server.py
+index 488d651..3d947b8 100644
+--- a/spatial_agent/entrypoints/launch_gpu_server.py
++++ b/spatial_agent/entrypoints/launch_gpu_server.py
+@@ -49,27 +49,46 @@ _STARTUP_TIMEOUT_SEC = 600
+ _DEPLOYMENT_NAMES = {
+     "Reconstruct": "spatial_Reconstruct",
+     "SAM3": "spatial_SAM3",
++    "Match": "spatial_Match",
++    "Gravity": "spatial_Gravity",
++    "Dynamic": "spatial_Dynamic",
+ }
+ 
+ # Tool definitions: backend -> {tool_name: (module_path, class_name)}
++# Match (LoMa-B keypoint matcher), Gravity (GeoCalib single-image
++# calibration) and Dynamic (Pi3MOS motion probability; weights lazy-loaded,
++# so backends without the checkpoint still come up) are backend-independent:
++# they ride along with every reconstruct backend the same way SAM3 does.
+ _GPU_TOOLS = {
+     "pi3": {
+         "Reconstruct": ("spatial_agent.gpu_models.pi3_model", "Pi3Model"),
+         "SAM3": ("spatial_agent.gpu_models.sam3_model", "SAM3Model"),
++        "Match": ("spatial_agent.gpu_models.loma_model", "LoMaModel"),
++        "Gravity": ("spatial_agent.gpu_models.geocalib_model", "GeoCalibModel"),
++        "Dynamic": ("spatial_agent.gpu_models.pi3mos_model", "Pi3MosModel"),
+     },
+     "da3": {
+         "Reconstruct": ("spatial_agent.gpu_models.da3_model", "DA3Model"),
+         "SAM3": ("spatial_agent.gpu_models.sam3_model", "SAM3Model"),
++        "Match": ("spatial_agent.gpu_models.loma_model", "LoMaModel"),
++        "Gravity": ("spatial_agent.gpu_models.geocalib_model", "GeoCalibModel"),
++        "Dynamic": ("spatial_agent.gpu_models.pi3mos_model", "Pi3MosModel"),
+     },
+     "mapanything": {
+         "Reconstruct": ("spatial_agent.gpu_models.mapanything_model", "MapAnythingModel"),
+         "SAM3": ("spatial_agent.gpu_models.sam3_model", "SAM3Model"),
++        "Match": ("spatial_agent.gpu_models.loma_model", "LoMaModel"),
++        "Gravity": ("spatial_agent.gpu_models.geocalib_model", "GeoCalibModel"),
++        "Dynamic": ("spatial_agent.gpu_models.pi3mos_model", "Pi3MosModel"),
+     },
+ }
+ 
+ _ALLOWED_METHODS = {
+     "spatial_Reconstruct": frozenset({"reconstruct"}),
+-    "spatial_SAM3": frozenset({"detect", "segment_video"}),
++    "spatial_SAM3": frozenset({"detect", "segment_auto", "segment_video"}),
++    "spatial_Match": frozenset({"match"}),
++    "spatial_Gravity": frozenset({"estimate"}),
++    "spatial_Dynamic": frozenset({"dynamic_masks"}),
+ }
+ 
+ 
+@@ -370,7 +389,7 @@ def main():
+     uid = uuid.uuid4().hex[:8]
+     http_port = args.http_port or _find_free_port(args.host)
+     auth_token = secrets.token_urlsafe(32)
+-    tools = ["Reconstruct", "SAM3"]
++    tools = ["Reconstruct", "SAM3", "Match", "Gravity", "Dynamic"]
+ 
+     print(f"[GPU Server] Starting (uid={uid}, gpus={args.num_gpus}, "
+           f"backend={args.reconstruct_backend}, port={http_port})")
+diff --git a/spatial_agent/gpu_models/types.py b/spatial_agent/gpu_models/types.py
+index b2200be..2a627c4 100644
+--- a/spatial_agent/gpu_models/types.py
++++ b/spatial_agent/gpu_models/types.py
+@@ -194,3 +194,20 @@ class SAM3VideoSegmentationOutput(AgentContext):
+     def to_message_content(self) -> str:
+         n_obj = len(self.object_ids) if self.object_ids else 0
+         return f"SAM3 tracked {n_obj} object(s) across {self.num_frames} frames"
++
++
++@dataclass
++class Pi3MosDynamicOutput(AgentContext):
++    """Pi3MOS per-pixel motion probability. All arrays are numpy.
++
++    ``dynamic_prob`` lives on the model's own grid (whole-frame LANCZOS
++    resize to a multiple-of-14 size under the pixel budget — no aspect
++    crop), so mapping back to the original frame is a pure resize.
++    """
++    dynamic_prob: Any = None    # np.ndarray (N, h, w) float16 in [0, 1]
++    frame_indices: List[int] = None
++    num_frames: int = 0
++    input_size: List[int] = None  # [width, height] of the model grid
++
++    def to_message_content(self) -> str:
++        return f"Pi3MOS motion probability for {self.num_frames} frames"

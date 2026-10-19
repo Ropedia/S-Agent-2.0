@@ -1,0 +1,23 @@
+{
+  "agent": "openhands-sdk",
+  "runtime_version": "1.33.0",
+  "python_version": "3.12",
+  "python_abis": [
+    "glibc",
+    "musl"
+  ],
+  "uv_version": "0.5.21",
+  "container_runtime_root": "/opt/custom-agent-runtime/oh-sdk",
+  "runtime_entrypoint": "runtime/run_openhands.py",
+  "runtime_env_script": "runtime-env.sh",
+  "packages": {
+    "openhands-sdk": "1.33.0",
+    "openhands-tools": "1.33.0",
+    "fastapi": "0.115.6",
+    "platformdirs": "4.3.6"
+  },
+  "notes": [
+    "Build the self-contained runtime image with build-runtime-image.sh; scripts/build_runtime.sh layers the same entrypoint on a pulled base instead.",
+    "Package versions here match docker.io/jierun/c-oh-sdk-1.33.0:v0.1, the public base image scripts/build_runtime.sh pulls by default."
+  ]
+}

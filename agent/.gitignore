@@ -1,0 +1,163 @@
+# --- Generated task directories ---------------------------------------------
+# `datasets/` and `tasks/` are emitted by adapters/*/run_adapter.py: 400 ERQA
+# task dirs where Dockerfile, score_erqa.py and test.sh are byte-identical
+# copies and each perception.py differs only in one hardcoded absolute path.
+# Regenerate rather than clone them:
+#   python3 adapters/erqa_spatial/run_adapter.py --output-dir datasets/erqa_spatial
+datasets/
+tasks/
+
+# --- Run outputs and scratch space ------------------------------------------
+# work/ holds extracted benchmark frames and perception artifacts, ~5 GB.
+# (No trailing comments on pattern lines: gitignore treats them as part of the
+# path, which silently disables the rule.)
+work/
+logs/
+runs/
+*.npy
+*.png
+*.jpg
+
+# --- Virtualenvs and tool caches ---------------------------------------------
+# (uv writes a self-ignoring .gitignore into these, but be explicit so the
+# intent survives a `uv cache clean`)
+.venv*/
+.uv-cache/
+.ruff_cache/
+.pytest_cache/
+__pycache__/
+*.pyc
+
+# --- Probe and debug artifacts ----------------------------------------------
+# One-off diagnostics. debug/bin/docker is a deliberately kept tracing wrapper;
+# its output is not.
+.permprobe/
+debug/*.log
+
+# --- Agent session transcripts ----------------------------------------------
+# Claude Code writes these on export; they are conversation logs, not source.
+20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*.txt
+
+# --- Secrets ------------------------------------------------------------------
+.env
+.env.*
+*.pem
+gpu_server.json
+
+# ---------------------------------------------------------------------------
+#
+#
+# ---------------------------------------------------------------------------
+*$py.class
+.abstra/
+apps/
+!apps/viewer/
+build/
+.cache
+celerybeat.pid
+celerybeat-schedule
+.claude
+*.code-workspace
+.codex
+*.cover
+cover/
+.coverage
+.coverage.*
+coverage.xml
+.cursorignore
+.cursorindexingignore
+cython_debug/
+./dataset
+/datasets/
+db.sqlite3
+db.sqlite3-journal
+develop-eggs/
+dist/
+.dmypy.json
+dmypy.json
+docs/_build/
+downloads/
+.DS_Store
+*.egg
+*.egg-info/
+.eggs/
+eggs/
+env/
+ENV/
+env.bak/
+.envrc
+!examples/tasks/
+htmlcov/
+.hypothesis/
+ignore/
+.installed.cfg
+instance/
+*.ipynb
+.ipynb_checkpoints
+ipython_config.py
+jobs/
+/lib/
+lib64/
+local_settings.py
+*.log
+*.manifest
+MANIFEST
+__marimo__/
+marimo/_lsp/
+marimo/_static/
+.mcp.json
+*.mo
+.mypy_cache/
+nosetests.xml
+.nox/
+/parity-experiments/
+parts/
+.pdm-build/
+.pdm-python
+pip-delete-this-directory.txt
+pip-log.txt
+.pixi
+*.pot
+profile_default/
+.pybuilder/
+*.py[codz]
+*.py.cover
+__pypackages__/
+.pypirc
+.pyre/
+.Python
+.pytype/
+.ropeproject
+*.sage.py
+.scrapy
+scripts/git_ignore/
+configs/trajectories/
+scripts/misc/trajectory_profile_outputs/
+scripts/run_datasets/resume*
+scripts/serve_llm/litellm_config_glm52.yaml
+scripts/serve_llm/litellm_config.yaml
+scripts/serve_llm/litellm_config_*.yaml
+scripts/serve_llm/litellm_log/
+scripts/serve_llm/*_masked.yaml
+scripts/serve_llm/trajectories/
+sdist/
+share/python-wheels/
+/site
+*.so
+*.spec
+.spyderproject
+.spyproject
+!src/sagent/tasks/
+src/sagent/viewer/static/
+.supabase
+target/
+/tasks/
+tmp/
+.tox/
+trials/
+var/
+.venv
+venv/
+venv.bak/
+.webassets-cache
+wheels/

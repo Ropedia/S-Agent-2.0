@@ -1,0 +1,20 @@
+S-Agent 2.0
+
+Copyright (c) 2026 The S-Agent 2.0 authors.
+
+Licensed under the Apache License, Version 2.0 (see LICENSE). This applies to
+everything under agent/ and docs/.
+
+perception/SpatialClaw is NVIDIA's SpatialClaw, a git submodule pinned at
+b062f82, under the NVIDIA Source Code License-NC. perception/overlay derives
+from it (three extra GPU tools and a registration patch) and is distributed
+under the same license (perception/overlay/LICENSE): non-commercial use only.
+The combined repository is therefore non-commercial as a whole.
+
+Model repositories fetched by perception/setup.sh are not bundled: Depth
+Anything 3 (Apache-2.0), map-anything (Apache-2.0), Pi3 (see its repository),
+SAM 3 (SAM License; redistribution must carry that license), GeoCalib
+(Apache-2.0), LoMa (MIT), Pi3MOS-SLAM (MIT). Review each license before use.
+
+agent/src/sagent is a modified copy of an Apache-2.0 agent evaluation
+framework; its original LICENSE is preserved as this repository's LICENSE.

@@ -1,0 +1,10 @@
+services:
+  main:
+    build:
+      context: ${CONTEXT_DIR}
+      ulimits:
+        nofile:
+          soft: 1048576
+          hard: 1048576
+    pull_policy: build
+    command: [ "sh", "-c", "sleep infinity" ]

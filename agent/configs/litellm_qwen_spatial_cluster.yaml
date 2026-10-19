@@ -1,0 +1,34 @@
+# Cluster (NTU cluster02) variant of litellm_qwen_spatial.yaml.
+#
+# Same purpose as the original: front the local vLLM so openhands-sdk can
+# discover the model's real capabilities. The SDK only queries /v1/model/info
+# when the model name starts with `litellm_proxy/`, and that query is the ONLY
+# thing that flips LLM.vision_is_active() to True for a self-hosted model.
+#
+# Deltas vs litellm_qwen_spatial.yaml:
+#   - callbacks: trajectory_logger REMOVED. configs/trajectory_logger.py is a
+#     broken symlink into the old host (/scratch/ywxzml3j/.../serve_llm/);
+#     the real file lives in the sagent repo's scripts/serve_llm and was not
+#     migrated. Restore it (and switch back to the original config) before any
+#     run whose analysis depends on protocol-level image_source logging.
+#   - api_base stays 127.0.0.1:8077 because the sbatch script runs LiteLLM on
+#     the SAME GPU node as vLLM; clients talk to <node>:4011.
+model_list:
+  - model_name: "qwen3.6-35b-a3b"
+    litellm_params:
+      model: "hosted_vllm/qwen3.6-35b-a3b"
+      api_base: "http://127.0.0.1:8077/v1"
+      api_key: "bearer"
+    model_info:
+      # Measured true on the original host: prompt_tokens 13 -> 103 with image.
+      supports_vision: true
+      # vLLM serves 262144; reserve 8192 for output.
+      max_input_tokens: 253952
+      max_output_tokens: 8192
+
+general_settings:
+  master_key: "dummy-key-cf"
+  disable_spend_logs: true
+
+litellm_settings:
+  drop_params: true

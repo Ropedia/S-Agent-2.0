@@ -1,0 +1,40 @@
+[
+    {
+        "adapter_name": "spatial",
+        "adapter_builders": [
+            "SpatialClaw team"
+        ],
+        "original_benchmark": [
+            {
+                "split": "test",
+                "size": 400,
+                "harness": "vlm",
+                "supported_agents": [
+                    "any"
+                ],
+                "adaptable": true,
+                "notes": "ERQA (Embodied Reasoning Question Answer, Google DeepMind) ships a single 400-row test split with public ground-truth answers, so no held-out split problem. Official scoring is exact match on a single option letter after prediction.replace('.','').strip().lower(). The upstream harness is a direct VLM call with interleaved images; this adapter turns each row into a scaffold-agnostic agent task whose images are files on disk and whose perception is an optional HTTP service."
+            }
+        ],
+        "sagent_adapter": [
+            {
+                "split": "test",
+                "adapted_benchmark_size": 400,
+                "parity_benchmark_size": 400,
+                "parity_sampling_rate": 1.0,
+                "registry_benchmark_size": 400,
+                "added_agents": [
+                    "mini-swe-agent",
+                    "claude-code",
+                    "openhands",
+                    "codex",
+                    "opencode"
+                ],
+                "parity_matching_agents": null,
+                "parity_unmatching_agents": null,
+                "parity_costs": null,
+                "notes": "No parity run performed by this adapter task; artifact correctness only. Reference points from the SpatialClaw reproduction on the same 400 rows with Qwen3.6-35B-A3B: 59.5% with perception tools, 47.0% no-tool CoT baseline. Composition: 287 single-image, 113 multi-image; question types Spatial Reasoning 84, Action Reasoning 72, Trajectory Reasoning 66, State Estimation 55, Task Reasoning 38, Multi-view Reasoning 37, Pointing 34, Other 14. Answer distribution A 123, C 98, B 96, D 83. Verifier is exact-match-first with a bounded extraction ladder; a reasoning dump with no stated letter scores 0 by design."
+            }
+        ]
+    }
+]
