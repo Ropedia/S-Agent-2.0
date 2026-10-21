@@ -5,6 +5,7 @@
 [![Paper](https://img.shields.io/badge/arXiv-2610.28354-b31b1b)](https://arxiv.org/abs/2610.28354)
 [![Project Page](https://img.shields.io/badge/Project%20Page-ropedia.github.io-6CBF43)](https://ropedia.github.io/S-Agent-2.0)
 [![License](https://img.shields.io/badge/License-Apache%202.0%20%2F%20NVIDIA%20NC-blue)](#license)
+[![Papers with Code: SOTA on MMSI-Bench](https://paperswithcode.co/api/v1/papers/2610.28354/leaderboard-badge.svg?eval=41061&live=1)](https://paperswithcode.co/api/v1/papers/2610.28354/leaderboard-badge-link?eval=41061)
 
 </div>
 
