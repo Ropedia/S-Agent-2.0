@@ -2,8 +2,8 @@
 
 # S-Agent 2.0: Spatial Reasoning with a General Coding Agent
 
-[![Paper](https://img.shields.io/badge/Paper-coming%20soon-lightgrey)](#)
-[![Project Page](https://img.shields.io/badge/Project%20Page-coming%20soon-lightgrey)](#)
+[![Paper](https://img.shields.io/badge/arXiv-2610.28354-b31b1b)](https://arxiv.org/abs/2610.28354)
+[![Project Page](https://img.shields.io/badge/Project%20Page-ropedia.github.io-6CBF43)](https://ropedia.github.io/S-Agent-2.0)
 [![License](https://img.shields.io/badge/License-Apache%202.0%20%2F%20NVIDIA%20NC-blue)](#license)
 
 </div>
@@ -32,7 +32,7 @@ not included; see [docs/SETUP.md](docs/SETUP.md).
 
 ## News
 
-- **2026-10** Code release.
+- **2026-10** Paper on [arXiv](https://arxiv.org/abs/2610.28354); [project page](https://ropedia.github.io/S-Agent-2.0); code release.
 
 ## Results
 
@@ -64,7 +64,7 @@ environment variables. Step-by-step instructions, including weights and the
 benchmark data variables, are in [docs/SETUP.md](docs/SETUP.md).
 
 ```bash
-git clone --recurse-submodules <this repository> && cd S-Agent-2.0
+git clone --recurse-submodules https://github.com/Ropedia/S-Agent-2.0.git && cd S-Agent-2.0
 
 # agent side
 cd agent && uv venv --python 3.12 && uv pip install -e ".[spatial]"
@@ -134,7 +134,9 @@ docs/SETUP.md          how to bring the services up and run a benchmark
 ```bibtex
 @article{sagent2,
   title   = {S-Agent 2.0: Spatial Reasoning with a General Coding Agent},
-  year    = {2026}
+  journal = {arXiv preprint arXiv:2610.28354},
+  year    = {2026},
+  url     = {https://arxiv.org/abs/2610.28354}
 }
 ```
 
