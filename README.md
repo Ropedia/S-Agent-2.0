@@ -8,9 +8,11 @@
 
 </div>
 
-<p align="center">
-  <img src="assets/teaser.png" width="90%" alt="S-Agent 2.0 overview">
-</p>
+
+
+https://github.com/user-attachments/assets/d540ddeb-f531-48ef-afc9-e3347c83ca48
+
+
 
 ## Overview
 
